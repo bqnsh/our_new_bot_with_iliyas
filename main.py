@@ -28,7 +28,8 @@ from telegram.ext import (
 
 # ─── Настройки ────────────────────────────────────────────────────────────────
 
-BOT_TOKEN = "8932869569:AAGgBffngqG4x97lR3C47k5df6l0ee7iAiU"       # ← вставь сюда новый токен от @BotFather
+import os
+BOT_TOKEN = os.environ.get("BOT_TOKEN")       # ← вставь сюда новый токен от @BotFather
 ADMIN_CHAT_ID = 7964126198         # ← твой Telegram chat_id (уже вставлен)
 
 # ─── Состояния диалога ────────────────────────────────────────────────────────
