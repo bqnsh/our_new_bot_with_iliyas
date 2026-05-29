@@ -1,22 +1,6 @@
-"""
-Телеграм-бот для приёма заявок
-================================
-Установка зависимостей:
-    pip install python-telegram-bot==20.7
-
-Запуск:
-    python bot.py
-
-Замени YOUR_BOT_TOKEN на токен от @BotFather
-"""
-
+import os
 import logging
-from telegram import (
-    Update,
-    KeyboardButton,
-    ReplyKeyboardMarkup,
-    ReplyKeyboardRemove,
-)
+from telegram import Update, KeyboardButton, ReplyKeyboardMarkup, ReplyKeyboardRemove
 from telegram.ext import (
     ApplicationBuilder,
     CommandHandler,
@@ -26,29 +10,19 @@ from telegram.ext import (
     filters,
 )
 
-# ─── Настройки ────────────────────────────────────────────────────────────────
-
-import os
-BOT_TOKEN = os.environ.get("BOT_TOKEN")       # ← вставь сюда новый токен от @BotFather
-ADMIN_CHAT_ID = 7964126198         # ← твой Telegram chat_id (уже вставлен)
-
-# ─── Состояния диалога ────────────────────────────────────────────────────────
-
-ASK_NAME, ASK_PHONE, ASK_SERVICE = range(3)
-
-# ─── Логирование ──────────────────────────────────────────────────────────────
-
 logging.basicConfig(
     format="%(asctime)s | %(levelname)s | %(message)s",
     level=logging.INFO,
 )
 logger = logging.getLogger(__name__)
 
+BOT_TOKEN = os.environ.get("BOT_TOKEN")
+ADMIN_CHAT_ID = 7964126198
 
-# ─── Хендлеры ─────────────────────────────────────────────────────────────────
+ASK_NAME, ASK_PHONE, ASK_SERVICE = range(3)
+
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    """Начало диалога — просим имя."""
     await update.message.reply_text(
         "👋 Добро пожаловать!\n\nКак вас зовут?",
         reply_markup=ReplyKeyboardRemove(),
@@ -57,36 +31,22 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
 
 
 async def ask_phone(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    """Получили имя — просим телефон."""
     context.user_data["name"] = update.message.text.strip()
-
-    phone_button = KeyboardButton(
-        text="📱 Поделиться контактом",
-        request_contact=True,
-    )
-    markup = ReplyKeyboardMarkup(
-        [[phone_button]],
-        resize_keyboard=True,
-        one_time_keyboard=True,
-    )
-
+    phone_button = KeyboardButton(text="📱 Поделиться контактом", request_contact=True)
+    markup = ReplyKeyboardMarkup([[phone_button]], resize_keyboard=True, one_time_keyboard=True)
     await update.message.reply_text(
-        f"Приятно познакомиться, {context.user_data['name']}! 👍\n\n"
-        "Пожалуйста, поделитесь номером телефона.",
+        f"Приятно познакомиться, {context.user_data['name']}! 👍\n\nПожалуйста, поделитесь номером телефона.",
         reply_markup=markup,
     )
     return ASK_PHONE
 
 
 async def ask_service(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    """Получили телефон — просим описать услугу."""
     if update.message.contact:
         phone = update.message.contact.phone_number
     else:
         phone = update.message.text.strip()
-
     context.user_data["phone"] = phone
-
     await update.message.reply_text(
         "Отлично! Теперь опишите, какая услуга вам нужна.",
         reply_markup=ReplyKeyboardRemove(),
@@ -95,13 +55,9 @@ async def ask_service(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int
 
 
 async def save_application(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    """Получили услугу — сохраняем и отправляем заявку админу."""
     context.user_data["service"] = update.message.text.strip()
-
     user = update.effective_user
     data = context.user_data
-
-    # Сообщение для тебя (администратора)
     admin_message = (
         "📋 *Новая заявка!*\n\n"
         f"👤 Имя: {data['name']}\n"
@@ -109,40 +65,24 @@ async def save_application(update: Update, context: ContextTypes.DEFAULT_TYPE) -
         f"🛠 Услуга: {data['service']}\n"
         f"🔗 Telegram: @{user.username or '—'} (id: {user.id})"
     )
-
     try:
-        await context.bot.send_message(
-            chat_id=ADMIN_CHAT_ID,
-            text=admin_message,
-            parse_mode="Markdown",
-        )
-        logger.info(f"Заявка отправлена от пользователя {user.id}")
+        await context.bot.send_message(chat_id=ADMIN_CHAT_ID, text=admin_message, parse_mode="Markdown")
     except Exception as e:
         logger.error(f"Ошибка отправки заявки: {e}")
-
-    # Ответ клиенту
     await update.message.reply_text(
         "✅ Заявка принята! Свяжемся с вами в течение часа.",
         reply_markup=ReplyKeyboardRemove(),
     )
-
     return ConversationHandler.END
 
 
 async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    """Отмена диалога."""
-    await update.message.reply_text(
-        "Диалог отменён. Напишите /start чтобы начать заново.",
-        reply_markup=ReplyKeyboardRemove(),
-    )
+    await update.message.reply_text("Диалог отменён. Напишите /start чтобы начать заново.", reply_markup=ReplyKeyboardRemove())
     return ConversationHandler.END
 
 
-# ─── Запуск ───────────────────────────────────────────────────────────────────
-
 def main() -> None:
     app = ApplicationBuilder().token(BOT_TOKEN).build()
-
     conv_handler = ConversationHandler(
         entry_points=[CommandHandler("start", start)],
         states={
@@ -155,11 +95,9 @@ def main() -> None:
         },
         fallbacks=[CommandHandler("cancel", cancel)],
     )
-
     app.add_handler(conv_handler)
-
-    logger.info("Бот запущен. Нажми Ctrl+C для остановки.")
-    app.run_polling()
+    logger.info("Бот запущен.")
+    app.run_polling(drop_pending_updates=True)
 
 
 if __name__ == "__main__":
